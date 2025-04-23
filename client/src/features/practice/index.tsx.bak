@@ -1,0 +1,1369 @@
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'wouter';
+import { User } from '@shared/schema';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { useQuery } from '@tanstack/react-query';
+
+import PracticeSession from './components/PracticeSession';
+import VocabPracticePage from './vocabulary/VocabPracticePage';
+// Importing hooks
+import usePracticeSession from './hooks/usePracticeSession';
+import usePracticeTools from './hooks/usePracticeTools';
+import PracticeResults from './components/PracticeResults';
+import './practice.css';
+import { motion } from 'framer-motion';
+import { PracticeSet } from './types';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { 
+  GraduationCap, 
+  BookText, 
+  Calculator, 
+  Brain, 
+  BarChart4, 
+  Trophy, 
+  Sparkles,
+  Clock,
+  CheckCircle,
+  BookOpen,
+  FileText,
+  Search,
+  FilterX,
+  SlidersHorizontal,
+  ArrowUpDown
+} from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useThemeLanguage } from '@/hooks/use-theme-language';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
+
+interface PracticeProps {
+  userData?: User;
+}
+
+/**
+ * Main Practice component that handles different practice sections
+ */
+const Practice: React.FC<PracticeProps> = ({ userData }) => {
+  // Get practice session state and functions
+  const {
+    state,
+    questionContainerRef,
+    practiceSets,
+    questions,
+    setsLoading,
+    handleTabChange,
+    startPractice,
+    handleAnswerChange,
+    toggleFlagged,
+    goToNextQuestion,
+    goToPreviousQuestion,
+    goToQuestion,
+    resetPractice,
+    exitPractice
+  } = usePracticeSession();
+  
+  // Get practice tools state and functions
+  const {
+    toolsState,
+    toggleTimer,
+    toggleCalculator,
+    toggleShowCorrectAnswer,
+    togglePomodoro
+  } = usePracticeTools();
+  
+  // Additional UI state
+  const [isVocabPracticeActive, setIsVocabPracticeActive] = useState(false);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [confirmExitDialogOpen, setConfirmExitDialogOpen] = useState(false);
+  const [myAnswerTab, setMyAnswerTab] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  const { t } = useThemeLanguage();
+  const isMobile = useIsMobile();
+  const [, setLocation] = useLocation();
+  
+  // Add animation on component mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Practice categories with enhanced styling and details
+  const practiceCategories = [
+    {
+      id: 'quantitative',
+      title: 'Quantitative Practice',
+      description: 'Perfect your quantitative skills through targeted practice sets covering arithmetic, algebra, geometry, and data analysis.',
+      icon: <Calculator className="h-6 w-6 text-blue-500" />,
+      bgIcon: <Brain className="absolute right-6 bottom-6 w-24 h-24 text-blue-100/30 -z-10" />,
+      gradient: 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40',
+      border: 'border-blue-100 dark:border-blue-900/50',
+      shadow: 'shadow-blue-200/30 dark:shadow-blue-900/20',
+      buttonGradient: 'bg-gradient-to-r from-blue-500 to-indigo-500',
+      textColor: 'text-blue-700 dark:text-blue-400',
+      highlightColor: 'text-blue-600 dark:text-blue-300',
+      type: 'quantitative',
+      topics: practiceSets?.filter(set => set.type === 'quantitative').length || 0,
+      progress: userData?.practiceCompleted ? Math.min(Math.floor(userData.practiceCompleted / 2), 100) : 0,
+      badge: 'Popular',
+    },
+    {
+      id: 'verbal',
+      title: 'Verbal Practice',
+      description: 'Strengthen your verbal reasoning with practice sets focused on reading comprehension, text completion, and sentence equivalence.',
+      icon: <BookText className="h-6 w-6 text-emerald-500" />,
+      bgIcon: <BarChart4 className="absolute right-6 bottom-6 w-24 h-24 text-emerald-100/30 -z-10" />,
+      gradient: 'bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/40 dark:to-green-950/40',
+      border: 'border-emerald-100 dark:border-emerald-900/50',
+      shadow: 'shadow-emerald-200/30 dark:shadow-emerald-900/20',
+      buttonGradient: 'bg-gradient-to-r from-emerald-500 to-green-500',
+      textColor: 'text-emerald-700 dark:text-emerald-400',
+      highlightColor: 'text-emerald-600 dark:text-emerald-300',
+      type: 'verbal',
+      topics: practiceSets?.filter(set => set.type === 'verbal').length || 0,
+      progress: userData?.practiceCompleted ? Math.min(Math.floor(userData.practiceCompleted / 3), 100) : 0,
+      badge: 'Essential',
+    },
+    {
+      id: 'vocabulary',
+      title: 'Vocabulary Practice',
+      description: 'Build your GRE vocabulary with our adaptive flashcard system and spaced repetition technique for maximum retention.',
+      icon: <Sparkles className="h-6 w-6 text-amber-500" />,
+      bgIcon: <Trophy className="absolute right-6 bottom-6 w-24 h-24 text-amber-100/30 -z-10" />,
+      gradient: 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40',
+      border: 'border-amber-100 dark:border-amber-900/50',
+      shadow: 'shadow-amber-200/30 dark:shadow-amber-900/20',
+      buttonGradient: 'bg-gradient-to-r from-amber-500 to-orange-500',
+      textColor: 'text-amber-700 dark:text-amber-400',
+      highlightColor: 'text-amber-600 dark:text-amber-300',
+      type: 'vocabulary',
+      topics: userData?.wordsLearned || 0,
+      progress: userData?.wordsLearned ? Math.min(Math.floor(userData.wordsLearned / 10), 100) : 0,
+      badge: 'Recommended',
+    },
+    {
+      id: 'essay',
+      title: 'Essay Writing Practice',
+      description: 'Develop and refine your analytical writing skills with practice prompts, structured feedback, and guided essay development.',
+      icon: <FileText className="h-6 w-6 text-purple-500" />,
+      bgIcon: <Sparkles className="absolute right-6 bottom-6 w-24 h-24 text-purple-100/30 -z-10" />,
+      gradient: 'bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/40 dark:to-pink-950/40',
+      border: 'border-purple-100 dark:border-purple-900/50',
+      shadow: 'shadow-purple-200/30 dark:shadow-purple-900/20',
+      buttonGradient: 'bg-gradient-to-r from-purple-500 to-pink-500',
+      textColor: 'text-purple-700 dark:text-purple-400',
+      highlightColor: 'text-purple-600 dark:text-purple-300',
+      type: 'essay',
+      topics: 12, // Fixed number of essay prompts
+      progress: 15, // Fixed progress percentage
+      badge: 'Advanced',
+      path: '/essays/prompts' // Direct path to essay prompts
+    }
+  ];
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 30, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 90,
+        damping: 12
+      }
+    }
+  };
+
+  const headerVariants = {
+    hidden: { opacity: 0, y: -20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        duration: 0.6,
+        ease: "easeOut"
+      }
+    }
+  };
+
+  // State for topic selection
+  const [showTopics, setShowTopics] = useState(false);
+  const [selectedType, setSelectedType] = useState<string>('');
+  const [topicCategories, setTopicCategories] = useState<any[]>([]);
+  
+  // Fetch topic data when needed
+  const { data: quantTopics = [] } = useQuery<any[]>({
+    queryKey: ['/api/quant/topics'],
+    enabled: showTopics && selectedType === 'quantitative'
+  });
+
+  const { data: verbalTopics = [] } = useQuery<any[]>({
+    queryKey: ['/api/verbal/topics'],
+    enabled: showTopics && selectedType === 'verbal'
+  });
+
+  // Memoize the topic icons to prevent re-renders
+  const calculatorIcon = React.useMemo(() => <Calculator className="h-5 w-5 text-blue-600" />, []);
+  const brainIcon = React.useMemo(() => <Brain className="h-5 w-5 text-indigo-600" />, []);
+  const bookTextIcon = React.useMemo(() => <BookText className="h-5 w-5 text-purple-600" />, []);
+  
+  // State for advanced filtering
+  const [searchTerm, setSearchTerm] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
+  const [questionCountFilter, setQuestionCountFilter] = useState<string>('all');
+  const [timeFilter, setTimeFilter] = useState<string>('all');
+  const [sortOption, setSortOption] = useState<string>('title-asc');
+  const [mainTopicFilter, setMainTopicFilter] = useState<string>('all');
+  const [subtopicFilter, setSubtopicFilter] = useState<string>('all');
+  
+  // State for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  // State for completed sets tracking
+  const [completedSets, setCompletedSets] = useState<Record<number, boolean>>({});
+  
+  // Reset all filters
+  const resetFilters = () => {
+    setSearchTerm('');
+    setDifficultyFilter('all');
+    setQuestionCountFilter('all');
+    setTimeFilter('all');
+    setMainTopicFilter('all');
+    setSubtopicFilter('all');
+    setSortOption('title-asc');
+    setCurrentPage(1);
+  };
+
+  // Group practice sets by topic
+  useEffect(() => {
+    // Skip if required data is not ready
+    if (!showTopics || !selectedType || !practiceSets) {
+      return;
+    }
+
+    // For quantitative, use the quant topics API
+    if (selectedType === 'quantitative' && quantTopics.length > 0) {
+      // First, group sets by category (Arithmetic, Algebra, Geometry, etc.)
+      const categoryGroups: Record<string, any[]> = {};
+      
+      // Find practice sets related to each topic
+      quantTopics.forEach(topic => {
+        const topicSets = practiceSets.filter(set => 
+          set.type === selectedType && 
+          (
+            // Either explicitly linked to this topic
+            (set.relatedTopicId === topic.id && set.relatedTopicType === 'quant') ||
+            // Or matches by category filter and topic filter
+            (set.categoryFilter === topic.category && 
+              (set.topicFilter === topic.name || set.title.toLowerCase().includes(topic.name.toLowerCase()))) ||
+            // Or just contains the topic name in the title (fallback)
+            set.title.toLowerCase().includes(topic.name.toLowerCase())
+          )
+        );
+        
+        if (topicSets.length > 0) {
+          const category = topic.category || 'General';
+          if (!categoryGroups[category]) {
+            categoryGroups[category] = [];
+          }
+          
+          categoryGroups[category].push({
+            id: topic.id,
+            name: topic.name,
+            description: topic.description || 'Practice questions for this topic',
+            sets: topicSets,
+            icon: calculatorIcon,
+            count: topicSets.length,
+            category: topic.category
+          });
+        }
+      });
+      
+      // Add a "General Practice" category for sets without a specific topic
+      const generalSets = practiceSets.filter(set => 
+        set.type === selectedType && 
+        !set.relatedTopicId &&
+        !set.categoryFilter &&
+        !set.topicFilter &&
+        !quantTopics.some(t => set.title.toLowerCase().includes(t.name.toLowerCase()))
+      );
+      
+      if (generalSets.length > 0) {
+        if (!categoryGroups['General']) {
+          categoryGroups['General'] = [];
+        }
+        
+        categoryGroups['General'].unshift({
+          id: 0,
+          name: "General Practice",
+          description: "Mixed practice sets with various topics",
+          sets: generalSets,
+          icon: brainIcon,
+          count: generalSets.length,
+          category: 'General'
+        });
+      }
+      
+      // Flatten the groups, but add headers for each category
+      const topicGroups: any[] = [];
+      Object.entries(categoryGroups).forEach(([category, groups]) => {
+        topicGroups.push(...groups);
+      });
+      
+      setTopicCategories(topicGroups);
+    }
+    // For verbal, group by verbal topics
+    else if (selectedType === 'verbal' && verbalTopics.length > 0) {
+      // Group by type (Reading Comprehension, Text Completion, etc.)
+      const typeGroups: Record<string, any[]> = {};
+      
+      // Find practice sets related to each topic
+      verbalTopics.forEach(topic => {
+        const topicSets = practiceSets.filter(set => 
+          set.type === selectedType && 
+          (
+            // Either explicitly linked to this topic
+            (set.relatedTopicId === topic.id && set.relatedTopicType === 'verbal') ||
+            // Or matches by category filter and topic filter
+            (set.categoryFilter === topic.type && 
+              (set.topicFilter === topic.title || set.title.toLowerCase().includes(topic.title.toLowerCase()))) ||
+            // Or just contains the topic name in the title (fallback)
+            set.title.toLowerCase().includes(topic.title.toLowerCase())
+          )
+        );
+        
+        if (topicSets.length > 0) {
+          const type = topic.type || 'General';
+          if (!typeGroups[type]) {
+            typeGroups[type] = [];
+          }
+          
+          typeGroups[type].push({
+            id: topic.id,
+            name: topic.title,
+            description: topic.description || 'Practice verbal reasoning questions for this topic',
+            sets: topicSets,
+            icon: bookTextIcon,
+            count: topicSets.length,
+            category: topic.type
+          });
+        }
+      });
+      
+      // Add a "General Verbal Practice" category for sets without a specific topic
+      const generalSets = practiceSets.filter(set => 
+        set.type === selectedType && 
+        !set.relatedTopicId &&
+        !set.categoryFilter &&
+        !set.topicFilter &&
+        !verbalTopics.some(t => set.title.toLowerCase().includes(t.title.toLowerCase()))
+      );
+      
+      if (generalSets.length > 0) {
+        if (!typeGroups['General']) {
+          typeGroups['General'] = [];
+        }
+        
+        typeGroups['General'].unshift({
+          id: 0,
+          name: "General Verbal Practice",
+          description: "Mixed verbal practice sets with various topics",
+          sets: generalSets,
+          icon: bookTextIcon,
+          count: generalSets.length,
+          category: 'General'
+        });
+      }
+      
+      // Flatten the groups
+      const topicGroups: any[] = [];
+      Object.entries(typeGroups).forEach(([type, groups]) => {
+        topicGroups.push(...groups);
+      });
+      
+      setTopicCategories(topicGroups);
+    }
+    // Fallback for verbal if no topics available
+    else if (selectedType === 'verbal') {
+      const verbalSets = practiceSets.filter(set => set.type === 'verbal');
+      if (verbalSets.length > 0) {
+        // Try to group by category
+        const categoryMap: Record<string, any[]> = {};
+        
+        verbalSets.forEach(set => {
+          const category = set.categoryFilter || 'General';
+          if (!categoryMap[category]) {
+            categoryMap[category] = [];
+          }
+          categoryMap[category].push(set);
+        });
+        
+        const topicGroups = Object.entries(categoryMap).map(([category, sets]) => ({
+          id: category,
+          name: category === 'General' ? 'General Verbal Practice' : 
+                category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' '),
+          description: `Practice your ${category === 'General' ? 'verbal reasoning' : category.replace(/_/g, ' ')} skills`,
+          sets,
+          icon: bookTextIcon,
+          count: sets.length,
+          category
+        }));
+        
+        setTopicCategories(topicGroups);
+      }
+    }
+  // Using JSON.stringify for complex objects to prevent unnecessary re-renders
+  }, [
+    showTopics, 
+    selectedType, 
+    practiceSets?.length, 
+    quantTopics?.length, 
+    verbalTopics?.length,
+    calculatorIcon,
+    brainIcon,
+    bookTextIcon
+  ]);
+
+  // Handle practice category click
+  const handleCategoryClick = (type: string, path?: string) => {
+    // If there's a direct path provided (like for essays), navigate to it
+    if (path) {
+      setLocation(path);
+      return;
+    }
+    
+    // Handle regular practice categories
+    handleTabChange(type);
+    
+    // Special handling for vocabulary practice
+    if (type === 'vocabulary') {
+      setIsVocabPracticeActive(true);
+      return;
+    }
+    
+    // For quantitative and verbal, show topic selection first
+    setSelectedType(type);
+    setShowTopics(true);
+  };
+  
+  // Start a specific practice set
+  const handleStartPracticeSet = (set: PracticeSet) => {
+    startPractice(set);
+    setShowTopics(false);
+  };
+  
+  // Go back to main practice categories
+  const handleBackToCategories = () => {
+    setShowTopics(false);
+    setSelectedType('');
+  };
+  
+  // Content for the main practice page
+  const renderPracticeMainContent = () => {
+    // When topic selection is active, show topic-based practice sets
+    if (showTopics && topicCategories.length > 0) {
+      // Special handling for quantitative practice with table view
+      if (selectedType === 'quantitative') {
+        // Flatten all practice sets from all topics
+        const allSets: PracticeSet[] = [];
+        topicCategories.forEach(topic => {
+          topic.sets.forEach((set: PracticeSet) => {
+            // Add topic info to each set for reference
+            allSets.push({
+              ...set,
+              _topicName: topic.name,
+              _topicCategory: topic.category
+            });
+          });
+        });
+        
+        // Apply filters
+        let filteredSets = [...allSets];
+        
+        // Apply search filter
+        if (searchTerm) {
+          const search = searchTerm.toLowerCase();
+          filteredSets = filteredSets.filter(set => 
+            set.title.toLowerCase().includes(search) ||
+            set.description.toLowerCase().includes(search) ||
+            (set.tags && set.tags.toLowerCase().includes(search))
+          );
+        }
+        
+        // Apply main topic filter
+        if (mainTopicFilter && mainTopicFilter !== 'all') {
+          filteredSets = filteredSets.filter(set => 
+            (set._topicCategory === mainTopicFilter) || 
+            (set.categoryFilter === mainTopicFilter)
+          );
+        }
+        
+        // Apply subtopic filter
+        if (subtopicFilter && subtopicFilter !== 'all') {
+          filteredSets = filteredSets.filter(set => 
+            (set._topicName === subtopicFilter) || 
+            (set.topicFilter === subtopicFilter) ||
+            // Also check if the set title contains the subtopic name
+            (set.title.toLowerCase().includes(subtopicFilter.toLowerCase()))
+          );
+        }
+        
+        // Apply difficulty filter
+        if (difficultyFilter && difficultyFilter !== 'all') {
+          const diffLevel = parseInt(difficultyFilter);
+          filteredSets = filteredSets.filter(set => set.difficulty === diffLevel);
+        }
+        
+        // Apply question count filter
+        if (questionCountFilter && questionCountFilter !== 'all') {
+          const [min, max] = questionCountFilter.split('-').map(Number);
+          filteredSets = filteredSets.filter(set => {
+            const count = set.questionIds.length;
+            if (max) {
+              return count >= min && count <= max;
+            } else {
+              return count >= min;
+            }
+          });
+        }
+        
+        // Apply time filter
+        if (timeFilter && timeFilter !== 'all') {
+          const [min, max] = timeFilter.split('-').map(Number);
+          filteredSets = filteredSets.filter(set => {
+            if (!set.timeLimit) return false;
+            const timeInMinutes = set.timeLimit / 60;
+            if (max) {
+              return timeInMinutes >= min && timeInMinutes <= max;
+            } else {
+              return timeInMinutes >= min;
+            }
+          });
+        }
+        
+        // Check for completed sets
+        // For demonstration, we'll use a simple approach by checking the userData.practiceCompleted field
+        // In a real implementation, you would use a specific array of completed set IDs
+        if (userData) {
+          // For now, mark as completed if the set ID is odd (just for demonstration)
+          // In a real implementation, you would use: userData.completedPracticeSets?.includes(set.id)
+          filteredSets = filteredSets.map(set => ({
+            ...set,
+            isCompleted: set.id % 2 === 1 // Simple mock for demonstration
+          }));
+        }
+        
+        // Apply sorting
+        if (sortOption) {
+          const [field, direction] = sortOption.split('-');
+          filteredSets = filteredSets.sort((a, b) => {
+            if (field === 'title') {
+              return direction === 'asc' 
+                ? a.title.localeCompare(b.title)
+                : b.title.localeCompare(a.title);
+            } else if (field === 'difficulty') {
+              const diffA = a.difficulty || 1;
+              const diffB = b.difficulty || 1;
+              return direction === 'asc' ? diffA - diffB : diffB - diffA;
+            } else if (field === 'questions') {
+              return direction === 'asc'
+                ? a.questionIds.length - b.questionIds.length
+                : b.questionIds.length - a.questionIds.length;
+            } else if (field === 'time') {
+              const timeA = a.timeLimit || 0;
+              const timeB = b.timeLimit || 0;
+              return direction === 'asc' ? timeA - timeB : timeB - timeA;
+            }
+            return 0;
+          });
+        }
+        
+        return (
+          <div className="container mx-auto max-w-6xl pb-16">
+            <div className="flex items-center mb-6">
+              <button 
+                onClick={handleBackToCategories}
+                className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
+                <span className="font-medium">Back to Practice Categories</span>
+              </button>
+            </div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="bg-gradient-to-r from-primary/5 to-primary/10 backdrop-blur-sm p-4 md:p-6 rounded-2xl shadow-lg border border-primary/20 mb-8"
+            >
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                Quantitative Practice Sets
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300">
+                Choose specific practice sets to focus on your quantitative skills.
+              </p>
+            </motion.div>
+            
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+              {/* Advanced Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    placeholder="Search practice sets..."
+                    className="pl-9"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                
+                {/* Add main topic filter */}
+                <Select value={mainTopicFilter} onValueChange={(value) => {
+                  setMainTopicFilter(value);
+                  // Reset subtopic filter when main topic changes
+                  if (value !== mainTopicFilter) {
+                    setSubtopicFilter('all');
+                  }
+                  setCurrentPage(1);
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Main Topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Main Topics</SelectItem>
+                    {/* Get unique main topics (categories) */}
+                    {Array.from(new Set(topicCategories.map(topic => topic.category)))
+                      .filter(Boolean)
+                      .sort()
+                      .map(category => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+                
+                {/* Add subtopic filter - only show if a main topic is selected */}
+                <Select 
+                  value={subtopicFilter} 
+                  onValueChange={(value) => {
+                    setSubtopicFilter(value);
+                    setCurrentPage(1);
+                  }}
+                  disabled={mainTopicFilter === 'all'}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Subtopic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subtopics</SelectItem>
+                    {/* Filter subtopics based on selected main topic */}
+                    {topicCategories
+                      .filter(topic => mainTopicFilter === 'all' || topic.category === mainTopicFilter)
+                      .map(topic => (
+                        <SelectItem key={topic.id} value={topic.name}>
+                          {topic.name}
+                        </SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+                
+                <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Difficulty Level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Difficulties</SelectItem>
+                    <SelectItem value="1">Level 1 (Easy)</SelectItem>
+                    <SelectItem value="2">Level 2 (Medium)</SelectItem>
+                    <SelectItem value="3">Level 3 (Hard)</SelectItem>
+                    <SelectItem value="4">Level 4 (Advanced)</SelectItem>
+                    <SelectItem value="5">Level 5 (Expert)</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Select value={questionCountFilter} onValueChange={setQuestionCountFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Question Count" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Question Counts</SelectItem>
+                    <SelectItem value="1-5">1-5 Questions</SelectItem>
+                    <SelectItem value="6-10">6-10 Questions</SelectItem>
+                    <SelectItem value="11-20">11-20 Questions</SelectItem>
+                    <SelectItem value="21">21+ Questions</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Select value={timeFilter} onValueChange={setTimeFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Time Limit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time Limits</SelectItem>
+                    <SelectItem value="0-10">Up to 10 mins</SelectItem>
+                    <SelectItem value="10-20">10-20 mins</SelectItem>
+                    <SelectItem value="20-30">20-30 mins</SelectItem>
+                    <SelectItem value="30">30+ mins</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <Select value={sortOption} onValueChange={setSortOption}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="title-asc">Title (A-Z)</SelectItem>
+                      <SelectItem value="title-desc">Title (Z-A)</SelectItem>
+                      <SelectItem value="difficulty-asc">Difficulty (Low to High)</SelectItem>
+                      <SelectItem value="difficulty-desc">Difficulty (High to Low)</SelectItem>
+                      <SelectItem value="questions-asc">Questions (Low to High)</SelectItem>
+                      <SelectItem value="questions-desc">Questions (High to Low)</SelectItem>
+                      <SelectItem value="time-asc">Time (Short to Long)</SelectItem>
+                      <SelectItem value="time-desc">Time (Long to Short)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-9 gap-1">
+                        <SlidersHorizontal className="h-4 w-4" />
+                        <span className="hidden sm:inline">Filters</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                      <div className="grid gap-4">
+                        <div className="space-y-2">
+                          <h4 className="font-medium leading-none">Active Filters</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {searchTerm || difficultyFilter || questionCountFilter || timeFilter 
+                              ? "Customize your practice set view"
+                              : "No filters applied"}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {searchTerm && (
+                            <Badge variant="secondary" className="gap-1">
+                              Search: {searchTerm}
+                              <button onClick={() => setSearchTerm('')} className="ml-1 hover:text-destructive">×</button>
+                            </Badge>
+                          )}
+                          {difficultyFilter && difficultyFilter !== 'all' && (
+                            <Badge variant="secondary" className="gap-1">
+                              Difficulty: {difficultyFilter}
+                              <button onClick={() => setDifficultyFilter('all')} className="ml-1 hover:text-destructive">×</button>
+                            </Badge>
+                          )}
+                          {questionCountFilter && questionCountFilter !== 'all' && (
+                            <Badge variant="secondary" className="gap-1">
+                              Questions: {questionCountFilter}
+                              <button onClick={() => setQuestionCountFilter('all')} className="ml-1 hover:text-destructive">×</button>
+                            </Badge>
+                          )}
+                          {timeFilter && timeFilter !== 'all' && (
+                            <Badge variant="secondary" className="gap-1">
+                              Time: {timeFilter}
+                              <button onClick={() => setTimeFilter('all')} className="ml-1 hover:text-destructive">×</button>
+                            </Badge>
+                          )}
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          onClick={resetFilters}
+                          disabled={!searchTerm && 
+                            (!difficultyFilter || difficultyFilter === 'all') && 
+                            (!questionCountFilter || questionCountFilter === 'all') && 
+                            (!timeFilter || timeFilter === 'all')}
+                          className="w-full"
+                        >
+                          <FilterX className="h-4 w-4 mr-2" />
+                          Reset All Filters
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredSets.length} of {allSets.length} practice sets
+                </div>
+              </div>
+              
+              {/* Table View */}
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[40%]">Practice Set</TableHead>
+                      <TableHead>Topic</TableHead>
+                      <TableHead className="text-center">Difficulty</TableHead>
+                      <TableHead className="text-center">Questions</TableHead>
+                      <TableHead className="text-center">Time</TableHead>
+                      <TableHead className="text-right"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSets.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          No practice sets match your filters
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      // Apply pagination to limit visible sets
+                      filteredSets
+                        .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                        .map((set, index) => {
+                          // Check if practice set is completed
+                          const isCompleted = set.isCompleted || false;
+                          
+                          return (
+                            <TableRow 
+                              key={`${set.id}-${index}`}
+                              className={`cursor-pointer hover:bg-muted/50 ${isCompleted ? 'bg-green-50/30 dark:bg-green-900/10' : ''}`}
+                              onClick={() => handleStartPracticeSet(set)}
+                            >
+                              <TableCell className="font-medium">
+                                <div className="flex items-center">
+                                  {isCompleted && (
+                                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-500 mr-2 flex-shrink-0" />
+                                  )}
+                                  <div>
+                                    <div className="font-medium flex items-center">
+                                      {set.title}
+                                      {isCompleted && (
+                                        <Badge variant="outline" className="ml-2 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                                          Completed
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground line-clamp-1">
+                                      {set.description}
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {set._topicName || 
+                                  set.categoryFilter || 
+                                  'General'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge 
+                                  variant="outline" 
+                                  className={`
+                                    ${set.difficulty === 1 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : ''}
+                                    ${set.difficulty === 2 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : ''}
+                                    ${set.difficulty === 3 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300' : ''}
+                                    ${set.difficulty === 4 ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300' : ''}
+                                    ${set.difficulty === 5 ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' : ''}
+                                    ${!set.difficulty ? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300' : ''}
+                                  `}
+                                >
+                                  {set.difficulty || 1}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                  {set.questionIds.length}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {set.timeLimit ? (
+                                  <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                                    {set.timeLimit >= 60 ? Math.floor(set.timeLimit / 60) : set.timeLimit} {set.timeLimit >= 60 ? 'min' : 'sec'}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">No limit</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button size="sm" className="h-8 gap-1">
+                                  {isCompleted ? 'Review' : 'Start'} <ArrowUpDown className="h-3.5 w-3.5" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {/* Pagination */}
+              {filteredSets.length > itemsPerPage && (
+                <div className="mt-4 flex justify-center">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                      
+                      {/* Generate page numbers */}
+                      {Array.from({ length: Math.min(5, Math.ceil(filteredSets.length / itemsPerPage)) }).map((_, i) => {
+                        // For simplicity, show up to 5 pages
+                        const pageNum = i + 1;
+                        return (
+                          <PaginationItem key={i}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(pageNum)}
+                              isActive={currentPage === pageNum}
+                            >
+                              {pageNum}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      })}
+                      
+                      {/* Show ellipsis if there are more than 5 pages */}
+                      {Math.ceil(filteredSets.length / itemsPerPage) > 5 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(prev => 
+                            Math.min(prev + 1, Math.ceil(filteredSets.length / itemsPerPage))
+                          )}
+                          className={currentPage >= Math.ceil(filteredSets.length / itemsPerPage) 
+                            ? 'pointer-events-none opacity-50' 
+                            : 'cursor-pointer'
+                          }
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+      
+      // Regular card view for other practice types
+      return (
+        <div className="container mx-auto max-w-6xl pb-16">
+          <div className="flex items-center mb-6">
+            <button 
+              onClick={handleBackToCategories}
+              className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
+              <span className="font-medium">Back to Practice Categories</span>
+            </button>
+          </div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="bg-gradient-to-r from-primary/5 to-primary/10 backdrop-blur-sm p-4 md:p-6 rounded-2xl shadow-lg border border-primary/20 mb-8"
+          >
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+              {selectedType === 'quantitative' ? 'Quantitative Practice Sets' : 'Verbal Practice Sets'}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300">
+              Choose a specific topic to focus your practice or select from general practice sets.
+            </p>
+          </motion.div>
+          
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="space-y-8"
+          >
+            {/* Group by category first */}
+            {(() => {
+              // Group topics by their category
+              const categoryMap: Record<string, any[]> = {};
+              topicCategories.forEach(topic => {
+                const category = topic.category || 'General';
+                if (!categoryMap[category]) {
+                  categoryMap[category] = [];
+                }
+                categoryMap[category].push(topic);
+              });
+              
+              // Render each category group
+              return Object.entries(categoryMap).map(([category, topics]) => (
+                <div key={category} className="space-y-4">
+                  {/* Category header */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="bg-primary/10 p-2 rounded-lg">
+                      {selectedType === 'quantitative' ? 
+                        <Calculator className="h-5 w-5 text-primary" /> : 
+                        <BookText className="h-5 w-5 text-primary" />
+                      }
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                      {category === 'General' ? 
+                        (selectedType === 'quantitative' ? 'General Quantitative Practice' : 'General Verbal Practice') :
+                        category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ')}
+                    </h2>
+                  </div>
+                  
+                  {/* Topics in this category */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {topics.map((topic, index) => (
+                      <motion.div key={topic.id} variants={itemVariants}>
+                        <Card className="shadow-md hover:shadow-lg transition-all border border-gray-200 dark:border-gray-800 overflow-hidden">
+                          <CardHeader className="border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-primary/10 p-2 rounded-lg">
+                                  {topic.icon}
+                                </div>
+                                <div>
+                                  <CardTitle className="text-lg font-bold">{topic.name}</CardTitle>
+                                  <CardDescription>{topic.description}</CardDescription>
+                                </div>
+                              </div>
+                              <Badge variant="outline" className="bg-white/80 dark:bg-gray-800/80">
+                                {topic.count} {topic.count === 1 ? 'set' : 'sets'}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-4">
+                            <div className="space-y-3">
+                              {topic.sets.map((set: PracticeSet) => (
+                                <div 
+                                  key={set.id}
+                                  className="p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 flex justify-between items-center cursor-pointer transition-colors"
+                                  onClick={() => handleStartPracticeSet(set)}
+                                >
+                                  <div>
+                                    <h3 className="font-medium text-gray-900 dark:text-gray-100">{set.title}</h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                      {set.description.length > 60 ? set.description.substring(0, 60) + '...' : set.description}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                        {set.questionIds.length} questions
+                                      </Badge>
+                                      {set.timeLimit && (
+                                        <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                                          {set.timeLimit >= 60 ? Math.floor(set.timeLimit / 60) : set.timeLimit} {set.timeLimit >= 60 ? 'min' : 'sec'}
+                                        </Badge>
+                                      )}
+                                      <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                                        Difficulty: {set.difficulty || 1}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  <div className="bg-primary text-white p-2 rounded-full hover:bg-primary/90 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              ));
+            })()}
+          </motion.div>
+        </div>
+      );
+    }
+    
+    // Otherwise show the main practice categories
+    return (
+      <div className="container mx-auto max-w-6xl pb-16">
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={headerVariants}
+          className="bg-gradient-to-r from-primary/5 to-primary/10 backdrop-blur-sm p-4 md:p-6 rounded-2xl shadow-lg border border-primary/20 mb-8"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div className="bg-primary/10 p-2 rounded-xl">
+              <GraduationCap className="h-7 w-7 text-primary" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              GRE Practice Center
+            </h1>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 md:text-lg max-w-3xl mt-3">
+            Build your GRE skills through focused practice sessions designed to maximize your score improvement.
+            Choose a practice area to begin mastering the content.
+          </p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-primary/10 flex items-center gap-3">
+              <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 dark:text-gray-200">Targeted Practice</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Focus on specific skills</p>
+              </div>
+            </div>
+            
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-primary/10 flex items-center gap-3">
+              <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-lg">
+                <Clock className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 dark:text-gray-200">Timed Sessions</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Build test-taking speed</p>
+              </div>
+            </div>
+            
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-primary/10 flex items-center gap-3">
+              <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-lg">
+                <BookOpen className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 dark:text-gray-200">Detailed Explanations</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Learn from your mistakes</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {isMobile ? (
+          <ScrollArea className="pb-16">
+            <div className="grid grid-cols-1 gap-6 mb-16 px-0.5">
+              {practiceCategories.map((category) => (
+                <Card
+                  key={category.id}
+                  className={`relative overflow-hidden shadow-lg hover:shadow-xl transition-all border ${category.border} cursor-pointer ${category.gradient} hover:scale-[1.01]`}
+                  onClick={() => handleCategoryClick(category.type, category.path)}
+                >
+                  <CardHeader className="pb-2 relative z-10">
+                    <div className="flex justify-between items-start">
+                      <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-2.5 rounded-full shadow-md">
+                        {category.icon}
+                      </div>
+                      <Badge variant="secondary" className={`${category.highlightColor} bg-white/80 dark:bg-gray-800/80 shadow-sm`}>
+                        {category.badge}
+                      </Badge>
+                    </div>
+                    <CardTitle className={`text-xl mt-3 font-bold ${category.textColor}`}>
+                      {category.title}
+                    </CardTitle>
+                    <CardDescription className="text-sm text-gray-700 dark:text-gray-300 mt-1.5 line-clamp-2">
+                      {category.description}
+                    </CardDescription>
+                    
+                    <div className="flex items-center justify-between mt-4 mb-2">
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {category.topics} {category.type === 'vocabulary' ? 'words' : 'sets'}
+                      </span>
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {category.progress}% complete
+                      </span>
+                    </div>
+                    <Progress value={category.progress} className="h-1.5" />
+                  </CardHeader>
+                  <CardContent className="pt-2 pb-4 relative z-10">
+                    <div className="flex justify-end mt-2">
+                      <div 
+                        className={`${category.buttonGradient} px-4 py-2 rounded-lg text-white text-sm font-medium shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCategoryClick(category.type, category.path);
+                        }}
+                      >
+                        Start Practicing
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardContent>
+                  {category.bgIcon}
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
+        ) : (
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {practiceCategories.map((category) => (
+              <motion.div key={category.id} variants={itemVariants}>
+                <Card
+                  className={`relative overflow-hidden ${category.shadow} hover:shadow-xl transition-all border ${category.border} cursor-pointer ${category.gradient} hover:scale-[1.02] h-full`}
+                  onClick={() => handleCategoryClick(category.type, category.path)}
+                >
+                  <CardHeader className="pb-2 relative z-10">
+                    <div className="flex justify-between items-start">
+                      <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-3 rounded-full shadow-md">
+                        {category.icon}
+                      </div>
+                      <Badge variant="secondary" className={`${category.highlightColor} bg-white/80 dark:bg-gray-800/80 shadow-sm`}>
+                        {category.badge}
+                      </Badge>
+                    </div>
+                    <CardTitle className={`text-xl mt-4 font-bold ${category.textColor}`}>
+                      {category.title}
+                    </CardTitle>
+                    <CardDescription className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+                      {category.description}
+                    </CardDescription>
+                    
+                    <div className="flex items-center justify-between mt-5 mb-2">
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {category.topics} {category.type === 'vocabulary' ? 'words' : 'sets'}
+                      </span>
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {category.progress}% complete
+                      </span>
+                    </div>
+                    <Progress value={category.progress} className="h-1.5" />
+                  </CardHeader>
+                  <CardContent className="pt-3 pb-5 relative z-10">
+                    <div className="flex justify-end mt-3">
+                      <div 
+                        className={`${category.buttonGradient} px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCategoryClick(category.type, category.path);
+                        }}
+                      >
+                        Start Practicing
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardContent>
+                  {category.bgIcon}
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </div>
+    );
+  };
+  
+  if (isVocabPracticeActive) {
+    return (
+      <DashboardLayout title={t('Vocabulary Practice')} user={userData}>
+        <VocabPracticePage onBackToPractice={() => setIsVocabPracticeActive(false)} />
+      </DashboardLayout>
+    );
+  }
+  
+  if (state.isPracticeActive) {
+    return state.showResults ? (
+      <DashboardLayout title={t('Practice Results')} user={userData}>
+        <PracticeResults
+          score={state.score}
+          totalQuestions={questions?.length || 0}
+          timeSpent={state.timeSpent}
+          onReviewAnswers={() => {
+            goToQuestion(0);
+          }}
+          onRestart={() => resetPractice()}
+          onExit={() => exitPractice()}
+          practiceName={state.selectedSet?.title || "Practice Session"}
+          practiceType={state.activeTab}
+        />
+      </DashboardLayout>
+    ) : (
+      <DashboardLayout title={t('Practice Session')} user={userData}>
+        <PracticeSession
+          questions={questions}
+          selectedSet={state.selectedSet}
+          currentQuestionIndex={state.currentQuestionIndex}
+          userAnswers={state.userAnswers}
+          timeSpent={state.timeSpent}
+          reviewMode={state.reviewMode}
+          showResults={state.showResults}
+          reviewDialogOpen={reviewDialogOpen}
+          confirmExitDialogOpen={confirmExitDialogOpen}
+          myAnswerTab={myAnswerTab}
+          currentSection={state.currentSection}
+          totalSections={state.totalSections}
+          showTimer={toolsState.showTimer}
+          calculatorOpen={toolsState.calculatorOpen}
+          showCorrectAnswer={toolsState.showCorrectAnswer}
+          showNavigator={false}
+          navigatorCollapsed={true}
+          pomodoroOpen={toolsState.pomodoroOpen}
+          onReviewDialogOpenChange={setReviewDialogOpen}
+          onConfirmExitDialogOpenChange={setConfirmExitDialogOpen}
+          onAnswerChange={handleAnswerChange}
+          onToggleFlag={toggleFlagged}
+          onNextQuestion={goToNextQuestion}
+          onPreviousQuestion={goToPreviousQuestion}
+          onExitPractice={() => setConfirmExitDialogOpen(true)}
+          onConfirmExit={() => exitPractice()}
+          onToggleMyAnswerTab={setMyAnswerTab}
+          onToggleTimer={toggleTimer}
+          onToggleCalculator={toggleCalculator}
+          onToggleCorrectAnswer={toggleShowCorrectAnswer}
+          onToggleNavigator={() => {}}
+          onTogglePomodoro={togglePomodoro}
+          onSelectQuestion={goToQuestion}
+          questionContainerRef={questionContainerRef}
+        />
+      </DashboardLayout>
+    );
+  }
+  
+  return (
+    <DashboardLayout title={t('Practice Center')} user={userData}>
+      {renderPracticeMainContent()}
+    </DashboardLayout>
+  );
+};
+
+export default Practice;

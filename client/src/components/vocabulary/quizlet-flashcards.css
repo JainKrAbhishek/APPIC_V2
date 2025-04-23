@@ -1,0 +1,76 @@
+/* QuizletFlashcards component custom CSS */
+
+/* Perspective setting for 3D effect */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+/* Preserve 3D for transform effects */
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+
+/* For flipping cards */
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* Rotation classes for card flipping */
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Card hover effects */
+.flashcard-grid-item {
+  transition: all 0.3s ease;
+}
+
+.flashcard-grid-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Animated background for cards */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-bg {
+  background: linear-gradient(-45deg, #6e45e1, #88d3ce, #d4a0ff, #6e45e1);
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+/* Staggered entrance for grid items */
+.stagger-fade-in > * {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-fade-in > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-fade-in > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger-fade-in > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-fade-in > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger-fade-in > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-fade-in > *:nth-child(6) { animation-delay: 0.3s; }
+.stagger-fade-in > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger-fade-in > *:nth-child(8) { animation-delay: 0.4s; }
+.stagger-fade-in > *:nth-child(9) { animation-delay: 0.45s; }
+.stagger-fade-in > *:nth-child(10) { animation-delay: 0.5s; }
+.stagger-fade-in > *:nth-child(n+11) { animation-delay: 0.55s; }

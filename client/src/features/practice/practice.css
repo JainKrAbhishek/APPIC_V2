@@ -1,0 +1,413 @@
+/* Practice component styles */
+.practice-container {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 200px);
+}
+
+.practice-tabs-container {
+  margin-bottom: 2rem;
+}
+
+.practice-section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.practice-set-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.practice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.practice-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.question-navigator {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.question-nav-button {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.explanation-container {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  background-color: #f8f9fa;
+  border-left: 4px solid #10b981;
+}
+
+.explanation-container h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #10b981;
+}
+
+.answer-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.answer-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.answer-option:hover {
+  background-color: #f9fafb;
+}
+
+.answer-option.selected {
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.answer-option.correct {
+  background-color: #ecfdf5;
+  border-color: #10b981;
+}
+
+.answer-option.incorrect {
+  background-color: #fef2f2;
+  border-color: #ef4444;
+}
+
+.difficulty-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.difficulty-badge.easy {
+  background-color: #ecfdf5;
+  color: #10b981;
+}
+
+.difficulty-badge.medium {
+  background-color: #eff6ff;
+  color: #3b82f6;
+}
+
+.difficulty-badge.hard {
+  background-color: #fef2f2;
+  color: #ef4444;
+}
+
+.practice-timer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.tab-content {
+  padding: 1.5rem 0;
+}
+
+.question-content {
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.question-content img {
+  max-width: 100%;
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+}
+
+.question-options {
+  margin-top: 1.5rem;
+}
+
+.question-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.question-image {
+  max-width: 100%;
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+}
+
+.question-math {
+  font-family: 'KaTeX_Math', serif;
+  margin: 1rem 0;
+}
+
+.navigator-sidebar {
+  width: 280px;
+  border-right: 1px solid #e5e7eb;
+  padding: 1rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.navigator-sidebar.collapsed {
+  width: 60px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .practice-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .practice-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .question-navigator {
+    grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+  }
+  
+  .question-nav-button {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+  }
+  
+  .navigator-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 50;
+    background-color: white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Animation for question transitions */
+.question-transition-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.question-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.question-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.question-transition-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Practice results styles */
+.results-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.results-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.results-score-circle {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 1.5rem;
+}
+
+.results-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: #f9fafb;
+  text-align: center;
+}
+
+.results-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+/* Vocabulary practice styles */
+.vocabulary-practice-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.vocab-question {
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.vocab-option {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vocab-option:hover {
+  background-color: #f9fafb;
+}
+
+.vocab-option.selected {
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.vocab-option.correct {
+  background-color: #ecfdf5;
+  border-color: #10b981;
+}
+
+.vocab-option.incorrect {
+  background-color: #fef2f2;
+  border-color: #ef4444;
+}
+
+.vocab-hint {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background-color: #fffbeb;
+  border: 1px solid #fbbf24;
+  font-style: italic;
+}
+
+.vocab-feedback {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.vocab-feedback.correct {
+  background-color: #ecfdf5;
+}
+
+.vocab-feedback.incorrect {
+  background-color: #fef2f2;
+}
+
+.vocab-progress {
+  height: 8px;
+  border-radius: 9999px;
+  background-color: #e5e7eb;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.vocab-progress-bar {
+  height: 100%;
+  border-radius: 9999px;
+  background-color: #3b82f6;
+  transition: width 0.3s ease;
+}
+
+.pomodoro-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  background-color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pomodoro-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* Animation classes for the slow-pulse and drift animations in Practice index */
+@keyframes slow-pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0.7; }
+}
+
+@keyframes slow-drift {
+  0% { transform: translate(-33%, 33%); }
+  50% { transform: translate(-30%, 30%); }
+  100% { transform: translate(-33%, 33%); }
+}
+
+.animate-slow-pulse {
+  animation: slow-pulse 8s ease-in-out infinite;
+}
+
+.animate-slow-drift {
+  animation: slow-drift 15s ease-in-out infinite;
+}
+
+/* Background pattern for subtle grid effect */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(200, 200, 200, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(200, 200, 200, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}

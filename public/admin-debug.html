@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard Debugger</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f9fafb;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+    }
+    h1 {
+      margin-top: 0;
+      color: #111827;
+    }
+    h2 {
+      color: #374151;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+    pre {
+      background-color: #f1f5f9;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 14px;
+    }
+    .button {
+      display: inline-block;
+      padding: 10px 16px;
+      background-color: #10b981;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      text-decoration: none;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    .button:hover {
+      background-color: #059669;
+    }
+    .button.secondary {
+      background-color: #6b7280;
+    }
+    .button.secondary:hover {
+      background-color: #4b5563;
+    }
+    .error {
+      background-color: #fee2e2;
+      color: #b91c1c;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    .success {
+      background-color: #d1fae5;
+      color: #047857;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    .log {
+      margin-bottom: 20px;
+    }
+    .log-entry {
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      border-radius: 4px;
+      background-color: #f9fafb;
+      border-left: 4px solid #e5e7eb;
+    }
+    .log-entry.error {
+      border-left-color: #ef4444;
+    }
+    .log-entry.warn {
+      border-left-color: #f59e0b;
+    }
+    .log-entry.info {
+      border-left-color: #3b82f6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Admin Dashboard Debugger</h1>
+    <p>This tool will help diagnose issues with the admin dashboard components.</p>
+    
+    <div id="authStatus">Checking authentication status...</div>
+    
+    <h2>Actions</h2>
+    <div>
+      <a href="/admin" class="button">Go to Admin Dashboard</a>
+      <button id="testAddQuestionBtn" class="button secondary">Test Add Question Dialog</button>
+      <button id="checkDependencies" class="button secondary">Check Dependencies</button>
+    </div>
+    
+    <h2>Console Log Monitor</h2>
+    <div id="consoleLog" class="log"></div>
+    
+    <h2>Component State</h2>
+    <pre id="componentState">No component state available</pre>
+    
+    <h2>Browser Information</h2>
+    <pre id="browserInfo"></pre>
+  </div>
+
+  <script>
+    // Helper function to format JSON
+    function formatJSON(obj) {
+      return JSON.stringify(obj, null, 2);
+    }
+    
+    // Log console messages
+    const originalConsole = {
+      log: console.log,
+      error: console.error,
+      warn: console.warn,
+      info: console.info
+    };
+    
+    const logContainer = document.getElementById('consoleLog');
+    
+    function addLogEntry(type, args) {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      
+      let content = '';
+      for (const arg of args) {
+        if (typeof arg === 'object') {
+          try {
+            content += formatJSON(arg) + ' ';
+          } catch (e) {
+            content += arg + ' ';
+          }
+        } else {
+          content += arg + ' ';
+        }
+      }
+      
+      entry.textContent = `[${type.toUpperCase()}] ${content}`;
+      logContainer.appendChild(entry);
+    }
+    
+    console.log = function(...args) {
+      originalConsole.log(...args);
+      addLogEntry('info', args);
+    };
+    
+    console.error = function(...args) {
+      originalConsole.error(...args);
+      addLogEntry('error', args);
+    };
+    
+    console.warn = function(...args) {
+      originalConsole.warn(...args);
+      addLogEntry('warn', args);
+    };
+    
+    console.info = function(...args) {
+      originalConsole.info(...args);
+      addLogEntry('info', args);
+    };
+    
+    // Check authentication status
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/auth/user', {
+          credentials: 'include'
+        });
+        
+        const authStatusEl = document.getElementById('authStatus');
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            authStatusEl.className = 'success';
+            authStatusEl.innerHTML = `
+              <strong>Authenticated:</strong> Logged in as ${data.user.username} 
+              (${data.user.isAdmin ? 'Admin' : 'Non-Admin'})
+            `;
+            console.log('User authenticated:', data.user);
+          } else {
+            authStatusEl.className = 'error';
+            authStatusEl.textContent = 'Authentication failed: Invalid user data';
+            console.error('Authentication failed:', data);
+          }
+        } else {
+          authStatusEl.className = 'error';
+          authStatusEl.textContent = 'Not authenticated. Please login first.';
+          console.warn('Not authenticated');
+        }
+      } catch (error) {
+        document.getElementById('authStatus').className = 'error';
+        document.getElementById('authStatus').textContent = 'Error checking authentication: ' + error.message;
+        console.error('Auth check error:', error);
+      }
+    }
+    
+    // Show browser information
+    function showBrowserInfo() {
+      const browserInfoEl = document.getElementById('browserInfo');
+      const info = {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        vendor: navigator.vendor,
+        language: navigator.language,
+        cookiesEnabled: navigator.cookieEnabled,
+        screenSize: {
+          width: window.screen.width,
+          height: window.screen.height
+        },
+        viewportSize: {
+          width: window.innerWidth,
+          height: window.innerHeight
+        }
+      };
+      browserInfoEl.textContent = formatJSON(info);
+    }
+    
+    // Test function for the Add Question dialog
+    document.getElementById('testAddQuestionBtn').addEventListener('click', () => {
+      console.info('Testing Add Question dialog functionality...');
+      
+      // Testing if required components exist
+      try {
+        // Create a dummy container to test React component mounting
+        const testContainer = document.createElement('div');
+        testContainer.style.display = 'none';
+        document.body.appendChild(testContainer);
+        
+        // Insert an iframe to test the add question dialog in isolation
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = '/admin';
+        document.body.appendChild(iframe);
+        
+        // Check for dialog-related dependencies
+        console.log('Checking for Dialog component...');
+        
+        setTimeout(() => {
+          try {
+            if (iframe.contentWindow) {
+              const dialogElements = iframe.contentWindow.document.querySelectorAll('[role="dialog"]');
+              console.log(`Found ${dialogElements.length} dialog elements in admin page`);
+              
+              const addButtons = iframe.contentWindow.document.querySelectorAll('button');
+              let addQuestionButtons = [];
+              
+              addButtons.forEach(button => {
+                if (button.textContent.includes('Add Question') || 
+                    button.textContent.includes('Create Question') ||
+                    button.innerText.includes('Add Question') ||
+                    button.innerText.includes('Create Question')) {
+                  addQuestionButtons.push(button);
+                }
+              });
+              
+              console.log(`Found ${addQuestionButtons.length} Add Question buttons`);
+              
+              if (addQuestionButtons.length > 0) {
+                console.log('Testing click on Add Question button...');
+                try {
+                  // Trigger a click event
+                  const event = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: iframe.contentWindow
+                  });
+                  addQuestionButtons[0].dispatchEvent(event);
+                  
+                  // Check for dialog display
+                  setTimeout(() => {
+                    const dialogsAfterClick = iframe.contentWindow.document.querySelectorAll('[role="dialog"]');
+                    console.log(`After clicking, found ${dialogsAfterClick.length} visible dialogs`);
+                  }, 500);
+                } catch (err) {
+                  console.error('Error clicking button:', err);
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error testing dialogs:', err);
+          }
+        }, 2000);
+        
+      } catch (error) {
+        console.error('Test failed:', error);
+      }
+    });
+    
+    // Check dependencies for the admin dashboard
+    document.getElementById('checkDependencies').addEventListener('click', () => {
+      console.info('Checking dependencies...');
+      
+      const dependencies = [
+        '@dnd-kit/core',
+        '@dnd-kit/modifiers',
+        '@dnd-kit/sortable',
+        '@dnd-kit/utilities',
+        '@tanstack/react-query',
+        'react',
+        'react-dom'
+      ];
+      
+      // Check global objects
+      const globals = {
+        'React exists': typeof window.React !== 'undefined',
+        'ReactDOM exists': typeof window.ReactDOM !== 'undefined',
+        'Window size': { width: window.innerWidth, height: window.innerHeight }
+      };
+      
+      console.log('Global objects:', globals);
+      
+      // Try to load a test script to check for React and other dependencies
+      const testScript = document.createElement('script');
+      testScript.src = `/detect-dependencies.js?t=${Date.now()}`;
+      testScript.onerror = () => {
+        console.error('Failed to load dependency detection script');
+      };
+      document.body.appendChild(testScript);
+    });
+    
+    // Initialize
+    window.addEventListener('load', () => {
+      checkAuth();
+      showBrowserInfo();
+      console.info('Debug tool initialized');
+    });
+  </script>
+</body>
+</html>

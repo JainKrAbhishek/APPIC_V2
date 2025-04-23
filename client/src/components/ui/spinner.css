@@ -1,0 +1,167 @@
+/* Dots spinner */
+.spinner-dots {
+  position: relative;
+  display: inline-block;
+}
+
+.spinner-dots::before,
+.spinner-dots::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation-duration: 1.2s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.spinner-dots::before {
+  left: -1.5em;
+  animation-name: spinner-dots-before;
+}
+
+.spinner-dots::after {
+  right: -1.5em;
+  animation-name: spinner-dots-after;
+}
+
+.spinner-dots {
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation-name: spinner-dots;
+  animation-duration: 1.2s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes spinner-dots {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(-150%) scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(150%) scale(0.8);
+    opacity: 0.5;
+  }
+}
+
+@keyframes spinner-dots-before {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(150%) scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-150%) scale(0.8);
+    opacity: 0.5;
+  }
+}
+
+@keyframes spinner-dots-after {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(-150%) scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(150%) scale(0.8);
+    opacity: 0.5;
+  }
+}
+
+/* Bars spinner */
+.spinner-bars {
+  position: relative;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+}
+
+.spinner-bars::before,
+.spinner-bars::after,
+.spinner-bars span {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0.2em;
+  height: 100%;
+  border-radius: 1px;
+  background-color: currentColor;
+  animation: spinner-bars 1.2s infinite ease-in-out;
+}
+
+.spinner-bars::before {
+  left: 0;
+  animation-delay: -0.24s;
+}
+
+.spinner-bars span {
+  left: 0.4em;
+  animation-delay: -0.12s;
+}
+
+.spinner-bars::after {
+  left: 0.8em;
+  animation-delay: 0s;
+}
+
+@keyframes spinner-bars {
+  0%, 40%, 100% {
+    transform: scaleY(0.6);
+    opacity: 0.6;
+  }
+  20% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* Pulse spinner */
+.spinner-pulse {
+  position: relative;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: spinner-pulse 1.4s infinite ease-in-out;
+}
+
+@keyframes spinner-pulse {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}

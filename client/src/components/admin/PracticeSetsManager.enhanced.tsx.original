@@ -1,0 +1,1282 @@
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { PracticeSet, Question } from "@shared/schema";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Form, 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage,
+  FormDescription
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription 
+} from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
+
+import { 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Star, 
+  Filter, 
+  RefreshCw, 
+  Search, 
+  CheckCircle2, 
+  Copy,
+  PencilRuler,
+  Clipboard,
+  ClipboardCheck,
+  MoreHorizontal,
+  Play,
+  FileQuestion,
+  Tag,
+  ListFilter,
+  Copy as CopyIcon,
+  BookOpen,
+  Calculator,
+  Brain,
+  Code,
+  Server,
+  X,
+  CheckSquare
+} from "lucide-react";
+
+// Form schema for practice sets
+const practiceSetSchema = z.object({
+  type: z.string().min(1, "Type is required"),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  difficulty: z.number().int().min(1).max(5),
+  questionIds: z.array(z.number().int()).min(1, "At least one question is required"),
+});
+
+type PracticeSetFormValues = z.infer<typeof practiceSetSchema>;
+
+const PracticeSetsManager = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Tabs state
+  const [activeTab, setActiveTab] = useState("management");
+  
+  // Filter and search states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState<string | null>(null);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<number | null>(null);
+  const [isFiltering, setIsFiltering] = useState(false);
+  
+  // Edit and dialog states
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<PracticeSet | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [practiceSetToDelete, setPracticeSetToDelete] = useState<PracticeSet | null>(null);
+  
+  // Bulk action states
+  const [selectedPracticeSets, setSelectedPracticeSets] = useState<number[]>([]);
+  const [bulkActionDialogOpen, setBulkActionDialogOpen] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<string>("delete");
+  const [confirmBulkDeleteOpen, setConfirmBulkDeleteOpen] = useState(false);
+  const [confirmBulkCopyOpen, setConfirmBulkCopyOpen] = useState(false);
+
+  // Fetch practice sets and questions data
+  const { data: practiceSetsData, isLoading: loadingPracticeSets, refetch: refetchPracticeSets } = useQuery<PracticeSet[]>({
+    queryKey: ["/api/practice-sets"],
+  });
+
+  const { data: questionsData, isLoading: loadingQuestions } = useQuery<Question[]>({
+    queryKey: ["/api/questions"],
+  });
+
+  // Form for practice sets
+  const practiceSetForm = useForm<PracticeSetFormValues>({
+    resolver: zodResolver(practiceSetSchema),
+    defaultValues: {
+      type: "verbal",
+      title: "",
+      description: "",
+      difficulty: 1,
+      questionIds: [],
+    },
+  });
+
+  // Add practice set mutation
+  const addPracticeSetMutation = useMutation({
+    mutationFn: async (data: PracticeSetFormValues) => {
+      return await apiRequest("/api/practice-sets", {
+        method: "POST",
+        data
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/practice-sets"] });
+      toast({
+        title: "Success",
+        description: "Practice set added successfully",
+      });
+      setDialogOpen(false);
+      practiceSetForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to add practice set",
+        variant: "destructive",
+      });
+      console.error("Error adding practice set:", error);
+    },
+  });
+
+  // Update practice set mutation
+  const updatePracticeSetMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: PracticeSetFormValues }) => {
+      return await apiRequest(`/api/practice-sets/${id}`, {
+        method: "PATCH",
+        data
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/practice-sets"] });
+      toast({
+        title: "Success",
+        description: "Practice set updated successfully",
+      });
+      setDialogOpen(false);
+      practiceSetForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update practice set",
+        variant: "destructive",
+      });
+      console.error("Error updating practice set:", error);
+    },
+  });
+
+  // Delete practice set mutation
+  const deletePracticeSetMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/practice-sets/${id}`, {
+        method: "DELETE"
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/practice-sets"] });
+      toast({
+        title: "Success",
+        description: "Practice set deleted successfully",
+      });
+      setDeleteDialogOpen(false);
+      setPracticeSetToDelete(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete practice set",
+        variant: "destructive",
+      });
+      console.error("Error deleting practice set:", error);
+    },
+  });
+
+  // Bulk delete practice sets mutation
+  const bulkDeletePracticeSetsMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      return await apiRequest("/api/practice-sets/bulk/delete", {
+        method: "POST",
+        data: { ids }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/practice-sets"] });
+      toast({
+        title: "Success",
+        description: `${selectedPracticeSets.length} practice sets deleted successfully`,
+      });
+      setConfirmBulkDeleteOpen(false);
+      setSelectedPracticeSets([]);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete practice sets",
+        variant: "destructive",
+      });
+      console.error("Error deleting practice sets:", error);
+    },
+  });
+
+  // Bulk copy practice sets mutation
+  const bulkCopyPracticeSetsMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      return await apiRequest("/api/practice-sets/bulk/copy", {
+        method: "POST",
+        data: { ids }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/practice-sets"] });
+      toast({
+        title: "Success",
+        description: `${selectedPracticeSets.length} practice sets copied successfully`,
+      });
+      setConfirmBulkCopyOpen(false);
+      setSelectedPracticeSets([]);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to copy practice sets",
+        variant: "destructive",
+      });
+      console.error("Error copying practice sets:", error);
+    },
+  });
+
+  // Handle adding new practice set
+  const handleAddNew = () => {
+    // Set editing item to null first
+    setEditingItem(null);
+    
+    // Use timeout to break the potential update cycle
+    setTimeout(() => {
+      practiceSetForm.reset({
+        type: "verbal",
+        title: "",
+        description: "",
+        difficulty: 1,
+        questionIds: [],
+      }, { 
+        keepDirty: false,
+        keepTouched: false,
+        keepIsValid: false, 
+      });
+      
+      // Then open the dialog
+      setDialogOpen(true);
+    }, 0);
+  };
+
+  // Handle editing practice set
+  const handleEdit = (practiceSet: PracticeSet) => {
+    // Set editing item first
+    setEditingItem(practiceSet);
+    
+    // Then reset form with a slight delay to avoid potential race conditions
+    setTimeout(() => {
+      practiceSetForm.reset({
+        type: practiceSet.type,
+        title: practiceSet.title,
+        description: practiceSet.description,
+        difficulty: practiceSet.difficulty ?? 1,
+        questionIds: Array.isArray(practiceSet.questionIds) ? practiceSet.questionIds : [],
+      });
+      
+      // Finally open the dialog after form reset is complete
+      setDialogOpen(true);
+    }, 0);
+  };
+
+  // Handle practice set submission
+  const onSubmitPracticeSet = (data: PracticeSetFormValues) => {
+    if (editingItem) {
+      // Update existing practice set
+      updatePracticeSetMutation.mutate({
+        id: editingItem.id,
+        data
+      });
+    } else {
+      // Add new practice set
+      addPracticeSetMutation.mutate(data);
+    }
+  };
+
+  // Handle practice set deletion confirmation
+  const handleDeleteConfirm = (practiceSet: PracticeSet) => {
+    setPracticeSetToDelete(practiceSet);
+    setDeleteDialogOpen(true);
+  };
+
+  // Toggle question selection for practice set form
+  const toggleQuestionSelection = (questionId: number) => {
+    const currentIds = practiceSetForm.getValues().questionIds || [];
+    const newIds = currentIds.includes(questionId)
+      ? currentIds.filter((id) => id !== questionId)
+      : [...currentIds, questionId];
+    
+    // Use setValue with shouldValidate: false to prevent immediate validation
+    practiceSetForm.setValue("questionIds", newIds, { 
+      shouldValidate: false,
+      shouldDirty: true 
+    });
+  };
+
+  // Toggle selection of a practice set for bulk actions
+  const togglePracticeSetSelection = (id: number) => {
+    if (selectedPracticeSets.includes(id)) {
+      setSelectedPracticeSets(selectedPracticeSets.filter(setId => setId !== id));
+    } else {
+      setSelectedPracticeSets([...selectedPracticeSets, id]);
+    }
+  };
+
+  // Select/deselect all practice sets for bulk actions
+  const toggleSelectAll = () => {
+    if (selectedPracticeSets.length === filteredPracticeSets.length) {
+      setSelectedPracticeSets([]);
+    } else {
+      setSelectedPracticeSets(filteredPracticeSets.map(set => set.id));
+    }
+  };
+
+  // Execute bulk action
+  const executeBulkAction = () => {
+    if (bulkActionType === "delete") {
+      setConfirmBulkDeleteOpen(true);
+    } else if (bulkActionType === "copy") {
+      setConfirmBulkCopyOpen(true);
+    }
+    setBulkActionDialogOpen(false);
+  };
+
+  // Filter practice sets based on search term, type, and difficulty
+  const filteredPracticeSets = practiceSetsData
+    ? practiceSetsData.filter(practiceSet => {
+        const matchesSearch = 
+          searchTerm === "" || 
+          practiceSet.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          practiceSet.description.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const matchesType = filterType === null || practiceSet.type === filterType;
+        
+        const matchesDifficulty = selectedDifficulty === null || practiceSet.difficulty === selectedDifficulty;
+        
+        return matchesSearch && matchesType && matchesDifficulty;
+      })
+    : [];
+
+  // Update the isFiltering state when filters change
+  useEffect(() => {
+    setIsFiltering(searchTerm !== "" || filterType !== null || selectedDifficulty !== null);
+  }, [searchTerm, filterType, selectedDifficulty]);
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilterType(null);
+    setSelectedDifficulty(null);
+    setIsFiltering(false);
+  };
+
+  // Get type icon
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case "verbal":
+        return <Brain className="h-4 w-4" />;
+      case "vocabulary":
+        return <BookOpen className="h-4 w-4" />;
+      case "quantitative":
+        return <Calculator className="h-4 w-4" />;
+      default:
+        return <FileQuestion className="h-4 w-4" />;
+    }
+  };
+
+  // Get type badge variant
+  const getTypeBadgeVariant = (type: string): "default" | "secondary" | "outline" => {
+    switch (type) {
+      case "verbal":
+        return "default";
+      case "vocabulary":
+        return "secondary";
+      case "quantitative":
+        return "outline";
+      default:
+        return "outline";
+    }
+  };
+
+  if (loadingPracticeSets && !practiceSetsData) {
+    return (
+      <Card className="w-full">
+        <CardContent className="pt-6 flex justify-center items-center min-h-[300px]">
+          <div className="flex flex-col items-center">
+            <Spinner size="lg" />
+            <p className="mt-4 text-sm text-muted-foreground">Loading practice sets...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full">
+      <CardHeader className="px-4 py-4 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <CardTitle className="text-lg md:text-xl flex items-center gap-2 mb-1">
+              <FileQuestion className="text-primary h-4 w-4 md:h-5 md:w-5" />
+              Practice Sets
+            </CardTitle>
+            <CardDescription className="text-sm">
+              Create and manage practice sets for GRE preparation
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => refetchPracticeSets()}
+              className="h-8 px-2 gap-1"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+            <Button 
+              onClick={handleAddNew}
+              size="sm"
+              className="h-8 px-2 gap-1"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Add New</span>
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          {/* Fix for mobile: Use grid for better spacing and prevent overlapping */}
+          <div className="grid grid-cols-1 gap-4 mb-4">
+            <div className="flex justify-start">
+              <TabsList className="w-full sm:w-auto">
+                <TabsTrigger value="management" className="flex-1 sm:flex-initial">Management</TabsTrigger>
+                <TabsTrigger value="bulk" className="flex-1 sm:flex-initial">Bulk Actions</TabsTrigger>
+              </TabsList>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <div className="relative w-full sm:w-auto">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search practice sets..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8 h-9 w-full sm:w-[200px]"
+                />
+              </div>
+              
+              <Select
+                value={filterType ?? "all"}
+                onValueChange={(value) => {
+                  const type = value === "all" ? null : value;
+                  setFilterType(type);
+                }}
+              >
+                <SelectTrigger className="h-9 w-full sm:w-[120px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="verbal">Verbal</SelectItem>
+                  <SelectItem value="vocabulary">Vocabulary</SelectItem>
+                  <SelectItem value="quantitative">Quantitative</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select
+                value={selectedDifficulty ? selectedDifficulty.toString() : "all"}
+                onValueChange={(value) => {
+                  const difficulty = value === "all" ? null : parseInt(value);
+                  setSelectedDifficulty(difficulty);
+                }}
+              >
+                <SelectTrigger className="h-9 w-full sm:w-[140px]">
+                  <SelectValue placeholder="Difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  {[1, 2, 3, 4, 5].map(level => (
+                    <SelectItem 
+                      key={level} 
+                      value={level.toString()}
+                      className="flex items-center"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Level {level}</span>
+                        <div className="flex">
+                          {Array.from({ length: level }).map((_, i) => (
+                            <Star key={i} className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+                          ))}
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {isFiltering && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="h-9 px-2 text-xs"
+                  onClick={clearFilters}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          <TabsContent value="management" className="m-0">
+            <div className="border rounded-md overflow-x-auto">
+              <Table className="min-w-full">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px] hidden md:table-cell">ID</TableHead>
+                    <TableHead>Title & Description</TableHead>
+                    <TableHead className="w-[90px]">Type</TableHead>
+                    <TableHead className="w-[90px] hidden sm:table-cell">Questions</TableHead>
+                    <TableHead className="w-[90px] text-center hidden md:table-cell">Difficulty</TableHead>
+                    <TableHead className="w-[70px] text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPracticeSets.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                        <div className="flex flex-col items-center">
+                          <FileQuestion className="h-10 w-10 text-muted-foreground/30 mb-2" />
+                          <span>No practice sets found</span>
+                          {isFiltering && (
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              onClick={clearFilters}
+                              className="mt-2"
+                            >
+                              Clear filters
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredPracticeSets.map(practiceSet => (
+                      <TableRow key={practiceSet.id} className="group">
+                        <TableCell className="font-mono text-xs text-muted-foreground hidden md:table-cell">{practiceSet.id}</TableCell>
+                        <TableCell>
+                          <div className="font-medium">{practiceSet.title}</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[230px] md:max-w-[300px]">
+                            {practiceSet.description}
+                          </div>
+                          <div className="flex items-center gap-1 sm:hidden mt-1">
+                            <span className="text-xs text-muted-foreground">
+                              {practiceSet.questionIds.length} questions
+                            </span>
+                            <span className="mx-1 text-muted-foreground/30">•</span>
+                            <div className="flex">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star 
+                                  key={i} 
+                                  className={`h-3 w-3 ${i < (practiceSet.difficulty || 1) ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground/20'}`} 
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getTypeBadgeVariant(practiceSet.type)} className="flex items-center gap-1 w-fit whitespace-nowrap text-xs">
+                            {getTypeIcon(practiceSet.type)}
+                            <span className="hidden sm:inline">{practiceSet.type}</span>
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="text-sm font-medium">{practiceSet.questionIds.length}</div>
+                          <div className="text-xs text-muted-foreground">questions</div>
+                        </TableCell>
+                        <TableCell className="text-center hidden md:table-cell">
+                          <div className="flex items-center justify-center">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star 
+                                key={i} 
+                                className={`h-4 w-4 ${i < (practiceSet.difficulty || 1) ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground/20'}`} 
+                              />
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right pr-2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-7 w-7 p-0 data-[state=open]:bg-muted"
+                              >
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[160px]">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleEdit(practiceSet)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDeleteConfirm(practiceSet)}>
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => {
+                                // Clone practice set logic
+                                const newSet = {
+                                  ...practiceSet,
+                                  title: `Copy of ${practiceSet.title}`,
+                                  id: undefined
+                                };
+                                
+                                // Set editing item to null first
+                                setEditingItem(null);
+                                
+                                // Use timeout to break the potential update cycle
+                                setTimeout(() => {
+                                  practiceSetForm.reset({
+                                    type: newSet.type,
+                                    title: newSet.title,
+                                    description: newSet.description,
+                                    difficulty: newSet.difficulty ?? 1,
+                                    questionIds: Array.isArray(newSet.questionIds) ? newSet.questionIds : [],
+                                  });
+                                  
+                                  // Open dialog after form reset
+                                  setDialogOpen(true);
+                                }, 0);
+                              }}>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Duplicate
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            
+            {practiceSetsData && practiceSetsData.length > 0 && (
+              <div className="flex justify-between items-center mt-4 text-sm text-muted-foreground">
+                <div>
+                  Showing {filteredPracticeSets.length} of {practiceSetsData.length} practice sets
+                </div>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="bulk" className="m-0">
+            <Alert className="mb-4">
+              <ListFilter className="h-4 w-4" />
+              <AlertTitle>Bulk Actions Management</AlertTitle>
+              <AlertDescription>
+                Select multiple practice sets to edit, delete, or duplicate them in bulk.
+              </AlertDescription>
+            </Alert>
+            
+            <div className="mb-4 flex flex-wrap justify-between items-center gap-2">
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={toggleSelectAll}
+                  className="h-9"
+                >
+                  {selectedPracticeSets.length === filteredPracticeSets.length && filteredPracticeSets.length > 0 
+                    ? "Deselect All" 
+                    : "Select All"}
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {selectedPracticeSets.length} of {filteredPracticeSets.length} selected
+                </span>
+              </div>
+              
+              <Button
+                onClick={() => setBulkActionDialogOpen(true)}
+                disabled={selectedPracticeSets.length === 0}
+                variant="default"
+                size="sm"
+                className="h-9"
+              >
+                Apply Bulk Action
+              </Button>
+            </div>
+            
+            <div className="border rounded-md overflow-x-auto">
+              <Table className="min-w-full">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40px]">
+                      <Checkbox 
+                        checked={
+                          filteredPracticeSets.length > 0 &&
+                          selectedPracticeSets.length === filteredPracticeSets.length
+                        }
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead className="w-[90px]">Type</TableHead>
+                    <TableHead className="w-[80px] hidden sm:table-cell">Questions</TableHead>
+                    <TableHead className="w-[90px] hidden md:table-cell">Difficulty</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPracticeSets.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                        <div className="flex flex-col items-center">
+                          <FileQuestion className="h-10 w-10 text-muted-foreground/30 mb-2" />
+                          <span>No practice sets found</span>
+                          {isFiltering && (
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              onClick={clearFilters}
+                              className="mt-2"
+                            >
+                              Clear filters
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredPracticeSets.map(practiceSet => (
+                      <TableRow 
+                        key={practiceSet.id} 
+                        className={selectedPracticeSets.includes(practiceSet.id) 
+                          ? "bg-primary/5 hover:bg-primary/10" 
+                          : ""}
+                        onClick={() => togglePracticeSetSelection(practiceSet.id)}
+                      >
+                        <TableCell className="p-2 sm:p-4">
+                          <Checkbox 
+                            checked={selectedPracticeSets.includes(practiceSet.id)}
+                            onCheckedChange={() => togglePracticeSetSelection(practiceSet.id)}
+                            aria-label={`Select ${practiceSet.title}`}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium text-sm sm:text-base">{practiceSet.title}</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground truncate max-w-[230px] md:max-w-[300px]">
+                            {practiceSet.description}
+                          </div>
+                          <div className="flex items-center gap-1 sm:hidden mt-1">
+                            <span className="text-xs text-muted-foreground">{practiceSet.questionIds.length} Q</span>
+                            <span className="mx-1 text-muted-foreground/30">•</span>
+                            <div className="flex">
+                              {Array.from({ length: 3 }).map((_, i) => (
+                                <Star 
+                                  key={i} 
+                                  className={`h-3 w-3 ${i < (practiceSet.difficulty || 1) ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground/20'}`} 
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getTypeBadgeVariant(practiceSet.type)} className="flex items-center gap-1 w-fit whitespace-nowrap text-xs">
+                            {getTypeIcon(practiceSet.type)}
+                            <span className="hidden sm:inline">{practiceSet.type}</span>
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="text-sm font-medium">{practiceSet.questionIds.length}</div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <div className="flex items-center">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star 
+                                key={i} 
+                                className={`h-4 w-4 ${i < (practiceSet.difficulty || 1) ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground/20'}`} 
+                              />
+                            ))}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+        </Tabs>
+        
+        {/* Practice Set Form Dialog */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingItem ? "Edit Practice Set" : "Add New Practice Set"}</DialogTitle>
+              <DialogDescription>
+                Create a practice set by filling in the details and selecting questions.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <Form {...practiceSetForm}>
+              <form onSubmit={practiceSetForm.handleSubmit(onSubmitPracticeSet)} className="space-y-4">
+                <FormField
+                  control={practiceSetForm.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={practiceSetForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Enter description" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={practiceSetForm.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type</FormLabel>
+                        <FormControl>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="verbal">Verbal</SelectItem>
+                              <SelectItem value="vocabulary">Vocabulary</SelectItem>
+                              <SelectItem value="quantitative">Quantitative</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={practiceSetForm.control}
+                    name="difficulty"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Difficulty Level</FormLabel>
+                        <div className="flex items-center gap-2">
+                          <FormControl>
+                            <Select
+                              value={field.value.toString()}
+                              onValueChange={(value) => field.onChange(parseInt(value))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select difficulty" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {[1, 2, 3, 4, 5].map((level) => (
+                                  <SelectItem key={level} value={level.toString()}>
+                                    {level} {level === 1 ? '(Easy)' : level === 5 ? '(Hard)' : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <div className="flex">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star 
+                                key={star} 
+                                className={`h-5 w-5 ${star <= field.value ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground/20'}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={practiceSetForm.control}
+                  name="questionIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Questions</FormLabel>
+                      <div className="border rounded-md p-4 max-h-[300px] overflow-y-auto">
+                        {questionsData && questionsData.length > 0 ? (
+                          <>
+                            <div className="text-sm text-muted-foreground mb-2 flex items-center justify-between">
+                              <span>
+                                Selected: {field.value.length} question(s)
+                              </span>
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-7 text-xs"
+                                onClick={() => practiceSetForm.setValue("questionIds", [])}
+                                disabled={field.value.length === 0}
+                              >
+                                Clear selection
+                              </Button>
+                            </div>
+                            <div className="space-y-2">
+                              {questionsData
+                                .filter(q => practiceSetForm.getValues().type === q.type)
+                                .map((question) => (
+                                <div
+                                  key={question.id}
+                                  className={`p-2 border rounded-md cursor-pointer transition-colors ${
+                                    field.value.includes(question.id) ? "bg-primary/10 border-primary" : "hover:bg-muted"
+                                  }`}
+                                  onClick={() => toggleQuestionSelection(question.id)}
+                                >
+                                  <div className="flex items-center">
+                                    <Checkbox
+                                      checked={field.value.includes(question.id)}
+                                      onCheckedChange={() => toggleQuestionSelection(question.id)}
+                                      className="mr-2"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <div className="flex-1">
+                                      <div className="truncate text-sm">{String(question.content)}</div>
+                                      <div className="flex mt-1 gap-2 items-center">
+                                        <Badge variant="outline" className="text-xs">
+                                          {String(question.subtype)}
+                                        </Badge>
+                                        <div className="text-xs text-muted-foreground">
+                                          {Array.isArray(question.options) ? question.options.length : 0} options
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center py-4 text-muted-foreground">
+                            No questions available. Please add questions first.
+                          </div>
+                        )}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <DialogFooter>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit"
+                    disabled={
+                      addPracticeSetMutation.isPending || 
+                      updatePracticeSetMutation.isPending
+                    }
+                  >
+                    {(addPracticeSetMutation.isPending || updatePracticeSetMutation.isPending) ? (
+                      <>
+                        <Spinner size="sm" className="mr-2" />
+                        {editingItem ? "Updating..." : "Creating..."}
+                      </>
+                    ) : (
+                      editingItem ? "Update Practice Set" : "Create Practice Set"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Deletion</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete the practice set "{practiceSetToDelete?.title}"? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (practiceSetToDelete) {
+                    deletePracticeSetMutation.mutate(practiceSetToDelete.id);
+                  }
+                }}
+                disabled={deletePracticeSetMutation.isPending}
+              >
+                {deletePracticeSetMutation.isPending ? (
+                  <>
+                    <Spinner size="sm" className="mr-2" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Bulk Action Dialog */}
+        <Dialog open={bulkActionDialogOpen} onOpenChange={setBulkActionDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Bulk Action</DialogTitle>
+              <DialogDescription>
+                Choose an action to apply to the {selectedPracticeSets.length} selected practice sets.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="flex flex-col space-y-2">
+                <Label htmlFor="bulkAction">Action Type</Label>
+                <Select
+                  value={bulkActionType}
+                  onValueChange={setBulkActionType}
+                >
+                  <SelectTrigger id="bulkAction">
+                    <SelectValue placeholder="Select an action" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="delete">
+                      <div className="flex items-center">
+                        <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+                        <span>Delete Practice Sets</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="copy">
+                      <div className="flex items-center">
+                        <Copy className="h-4 w-4 mr-2 text-primary" />
+                        <span>Duplicate Practice Sets</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="rounded-md border p-4 max-h-[200px] overflow-y-auto">
+                <div className="text-sm font-medium mb-2">Selected Items:</div>
+                <div className="space-y-1">
+                  {filteredPracticeSets
+                    .filter(set => selectedPracticeSets.includes(set.id))
+                    .map(set => (
+                      <div key={set.id} className="flex items-center justify-between text-sm p-1 rounded-sm hover:bg-muted">
+                        <div className="flex items-center gap-2">
+                          <CheckSquare className="h-3 w-3 text-primary" />
+                          <span>{set.title}</span>
+                        </div>
+                        <Badge variant={getTypeBadgeVariant(set.type)} className="text-xs">
+                          {set.type}
+                        </Badge>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setBulkActionDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant={bulkActionType === "delete" ? "destructive" : "default"}
+                onClick={executeBulkAction}
+              >
+                {bulkActionType === "delete" ? (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete {selectedPracticeSets.length} Items
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Duplicate {selectedPracticeSets.length} Items
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Bulk Delete Confirmation Dialog */}
+        <Dialog open={confirmBulkDeleteOpen} onOpenChange={setConfirmBulkDeleteOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Bulk Deletion</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete {selectedPracticeSets.length} practice sets? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmBulkDeleteOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => bulkDeletePracticeSetsMutation.mutate(selectedPracticeSets)}
+                disabled={bulkDeletePracticeSetsMutation.isPending}
+              >
+                {bulkDeletePracticeSetsMutation.isPending ? (
+                  <>
+                    <Spinner size="sm" className="mr-2" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete All Selected"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Bulk Copy Confirmation Dialog */}
+        <Dialog open={confirmBulkCopyOpen} onOpenChange={setConfirmBulkCopyOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Bulk Duplication</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to duplicate {selectedPracticeSets.length} practice sets? New copies will be created with "Copy of" prefix.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmBulkCopyOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => bulkCopyPracticeSetsMutation.mutate(selectedPracticeSets)}
+                disabled={bulkCopyPracticeSetsMutation.isPending}
+              >
+                {bulkCopyPracticeSetsMutation.isPending ? (
+                  <>
+                    <Spinner size="sm" className="mr-2" />
+                    Duplicating...
+                  </>
+                ) : (
+                  "Duplicate All Selected"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default PracticeSetsManager;

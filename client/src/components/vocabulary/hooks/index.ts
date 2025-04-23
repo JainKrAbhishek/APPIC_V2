@@ -1,0 +1,1 @@
+export { useVocabularyPractice } from './useVocabularyPractice';

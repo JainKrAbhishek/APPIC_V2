@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Add Question Dialog</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f9fafb;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+    }
+    h1 {
+      margin-top: 0;
+      color: #111827;
+    }
+    h2 {
+      color: #374151;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+    .button {
+      display: inline-block;
+      padding: 10px 16px;
+      background-color: #10b981;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      text-decoration: none;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    .button:hover {
+      background-color: #059669;
+    }
+    pre {
+      background-color: #f1f5f9;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 14px;
+    }
+    .success {
+      background-color: #d1fae5;
+      color: #047857;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    .error {
+      background-color: #fee2e2;
+      color: #b91c1c;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      overflow: auto;
+    }
+    .modal-content {
+      background-color: white;
+      margin: 50px auto;
+      padding: 30px;
+      width: 80%;
+      max-width: 800px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      position: relative;
+    }
+    .close-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      color: #374151;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Test Add Question Dialog</h1>
+    <p>This page tests the functionality of adding a question through a minimal implementation.</p>
+    
+    <div id="authStatus">Checking authentication status...</div>
+    
+    <h2>Direct API Test</h2>
+    <button id="testDirectApi" class="button">Test Question Creation API</button>
+    <div id="directApiResult"></div>
+    
+    <h2>Mock Dialog Test</h2>
+    <button id="openMockDialog" class="button">Open Mock Add Question Dialog</button>
+    
+    <h2>Response Log</h2>
+    <pre id="responseLog"></pre>
+  </div>
+  
+  <!-- Mock Add Question Dialog -->
+  <div id="mockDialog" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" id="closeDialog">&times;</span>
+      <h2>Add New Question</h2>
+      
+      <form id="mockQuestionForm">
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">Question Type</label>
+          <select id="questionType" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+            <option value="quantitative">Quantitative</option>
+            <option value="verbal">Verbal</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">Subtype</label>
+          <select id="questionSubtype" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+            <option value="multiple_choice">Multiple Choice</option>
+            <option value="numeric">Numeric</option>
+            <option value="multiple_select">Multiple Select</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">Content</label>
+          <textarea id="questionContent" rows="5" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;" placeholder="Enter question content..."></textarea>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">Answer</label>
+          <input type="text" id="questionAnswer" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;" placeholder="Answer value" />
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">Difficulty (1-5)</label>
+          <input type="number" id="questionDifficulty" min="1" max="5" value="3" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;" />
+        </div>
+        
+        <button type="submit" class="button" style="width: 100%;">Create Question</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Helper function for logging
+    function log(message, data) {
+      const logEl = document.getElementById('responseLog');
+      const timestamp = new Date().toLocaleTimeString();
+      
+      let logMessage = `[${timestamp}] ${message}\n`;
+      if (data) {
+        if (typeof data === 'object') {
+          logMessage += JSON.stringify(data, null, 2) + '\n';
+        } else {
+          logMessage += data + '\n';
+        }
+      }
+      
+      logEl.textContent = logMessage + logEl.textContent;
+    }
+    
+    // Check authentication status
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/auth/user', {
+          credentials: 'include'
+        });
+        
+        const authStatusEl = document.getElementById('authStatus');
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            authStatusEl.className = 'success';
+            authStatusEl.innerHTML = `
+              <strong>Authenticated:</strong> Logged in as ${data.user.username} 
+              (${data.user.isAdmin ? 'Admin' : 'Non-Admin'})
+            `;
+            log('User authenticated', data.user);
+            return true;
+          } else {
+            authStatusEl.className = 'error';
+            authStatusEl.textContent = 'Authentication failed: Invalid user data';
+            log('Authentication failed', data);
+            return false;
+          }
+        } else {
+          authStatusEl.className = 'error';
+          authStatusEl.textContent = 'Not authenticated. Please login first.';
+          log('Not authenticated');
+          return false;
+        }
+      } catch (error) {
+        document.getElementById('authStatus').className = 'error';
+        document.getElementById('authStatus').textContent = 'Error checking authentication: ' + error.message;
+        log('Auth check error', error);
+        return false;
+      }
+    }
+    
+    // Direct API test for creating a question
+    document.getElementById('testDirectApi').addEventListener('click', async () => {
+      const isAuthenticated = await checkAuth();
+      if (!isAuthenticated) {
+        log('Cannot test API - not authenticated');
+        document.getElementById('directApiResult').className = 'error';
+        document.getElementById('directApiResult').textContent = 'Please login first';
+        return;
+      }
+      
+      log('Testing question creation API...');
+      
+      const testQuestion = {
+        type: 'quantitative',
+        subtype: 'multiple_choice',
+        content: 'This is a test question created via the direct API test?',
+        options: JSON.stringify([
+          { text: 'Option A', isCorrect: true, explanation: 'This is correct' },
+          { text: 'Option B', isCorrect: false, explanation: 'This is incorrect' }
+        ]),
+        answer: '0',
+        difficulty: 3
+      };
+      
+      try {
+        const response = await fetch('/api/questions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(testQuestion),
+          credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          log('Question created successfully', result);
+          document.getElementById('directApiResult').className = 'success';
+          document.getElementById('directApiResult').textContent = 'Question created successfully. See log for details.';
+        } else {
+          log('Failed to create question', result);
+          document.getElementById('directApiResult').className = 'error';
+          document.getElementById('directApiResult').textContent = 'API error: ' + (result.message || 'Unknown error');
+        }
+      } catch (error) {
+        log('Error creating question', error);
+        document.getElementById('directApiResult').className = 'error';
+        document.getElementById('directApiResult').textContent = 'Error: ' + error.message;
+      }
+    });
+    
+    // Mock dialog functionality
+    const mockDialog = document.getElementById('mockDialog');
+    
+    document.getElementById('openMockDialog').addEventListener('click', () => {
+      mockDialog.style.display = 'block';
+    });
+    
+    document.getElementById('closeDialog').addEventListener('click', () => {
+      mockDialog.style.display = 'none';
+    });
+    
+    window.addEventListener('click', (event) => {
+      if (event.target === mockDialog) {
+        mockDialog.style.display = 'none';
+      }
+    });
+    
+    document.getElementById('mockQuestionForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      
+      const isAuthenticated = await checkAuth();
+      if (!isAuthenticated) {
+        log('Cannot submit form - not authenticated');
+        return;
+      }
+      
+      const questionData = {
+        type: document.getElementById('questionType').value,
+        subtype: document.getElementById('questionSubtype').value,
+        content: document.getElementById('questionContent').value,
+        answer: document.getElementById('questionAnswer').value,
+        difficulty: parseInt(document.getElementById('questionDifficulty').value),
+        options: JSON.stringify([]) // Empty options for simplicity
+      };
+      
+      log('Submitting question data', questionData);
+      
+      try {
+        const response = await fetch('/api/questions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(questionData),
+          credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          log('Question created successfully from form', result);
+          mockDialog.style.display = 'none';
+          alert('Question created successfully!');
+        } else {
+          log('Failed to create question from form', result);
+          alert('Error creating question: ' + (result.message || 'Unknown error'));
+        }
+      } catch (error) {
+        log('Error submitting form', error);
+        alert('Error: ' + error.message);
+      }
+    });
+    
+    // Initialize
+    window.addEventListener('load', checkAuth);
+  </script>
+</body>
+</html>

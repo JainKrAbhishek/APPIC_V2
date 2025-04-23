@@ -1,0 +1,216 @@
+/* GRE Practice styles */
+
+.gre-practice-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: white;
+  min-height: calc(100vh - 128px);
+  display: flex;
+  flex-direction: column;
+}
+
+.gre-question-container {
+  padding: 20px;
+  flex-grow: 1;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+
+.gre-header {
+  background-color: #4a4a4a;
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.gre-question-content {
+  font-size: 18px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.gre-answer-option {
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  transition: background-color 0.2s;
+}
+
+.gre-answer-option:hover {
+  background-color: #f5f5f5;
+}
+
+.gre-answer-option-selected {
+  background-color: #f0f7ff;
+  border: 1px solid #3b82f6;
+}
+
+.gre-numeric-input {
+  font-size: 18px;
+  padding: 8px 12px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  width: 120px;
+  text-align: center;
+}
+
+.gre-numeric-input:focus {
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.gre-question-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.gre-question-navigation {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.gre-question-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* Question status colors */
+.gre-question-unseen {
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+}
+
+.gre-question-answered {
+  background-color: #dbeafe;
+  border: 1px solid #93c5fd;
+}
+
+.gre-question-flagged {
+  background-color: #fef3c7;
+  border: 1px solid #fcd34d;
+}
+
+.gre-question-correct {
+  background-color: #d1fae5;
+  border: 1px solid #6ee7b7;
+}
+
+.gre-question-incorrect {
+  background-color: #fee2e2;
+  border: 1px solid #fca5a5;
+}
+
+.gre-tab-button {
+  background-color: #4a4a4a;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.gre-tab-button-active {
+  background-color: #7c3aed;
+  color: white;
+}
+
+.gre-section-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Practice results page */
+.gre-results-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+.gre-score-circle {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 8px solid #7c3aed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  margin: 0 auto 24px auto;
+}
+
+.gre-score-number {
+  font-size: 36px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.gre-score-divider {
+  font-size: 20px;
+  color: #6b7280;
+}
+
+/* Responsive styles */
+@media (max-width: 640px) {
+  .gre-question-content {
+    font-size: 16px;
+  }
+  
+  .gre-answer-option {
+    padding: 10px;
+  }
+  
+  .gre-numeric-input {
+    font-size: 16px;
+    width: 100px;
+  }
+  
+  .gre-question-button {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  
+  .gre-score-circle {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .gre-score-number {
+    font-size: 30px;
+  }
+}
+
+/* Animation for transitions */
+.gre-fade-enter {
+  opacity: 0;
+}
+
+.gre-fade-enter-active {
+  opacity: 1;
+  transition: opacity 300ms;
+}
+
+.gre-fade-exit {
+  opacity: 1;
+}
+
+.gre-fade-exit-active {
+  opacity: 0;
+  transition: opacity 300ms;
+}
